@@ -27,7 +27,7 @@ opt-level = 3
 all-features = true
 
 [dependencies]
-miniquad = { version = "=0.4.5", features = ["log-impl"] }
+miniquad = { git = "https://github.com/Querijn/miniquad-hotreload.git", features = ["log-impl"] }
 quad-rand = "0.2.1"
 glam = {version = "0.27", features = ["scalar-math"] }
 image = { version = "0.24", default-features = false, features = ["png", "tga"] }
