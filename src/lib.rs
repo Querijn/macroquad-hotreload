@@ -154,7 +154,7 @@ use crate::{
 
 use glam::{vec2, Mat4, Vec2};
 
-pub(crate) mod thread_assert {
+pub mod thread_assert {
     static mut THREAD_ID: Option<std::thread::ThreadId> = None;
 
     pub fn set_thread_id() {
@@ -173,7 +173,7 @@ pub(crate) mod thread_assert {
         }
     }
 }
-struct Context {
+pub struct Context {
     audio_context: audio::AudioContext,
 
     screen_width: f32,
@@ -453,7 +453,8 @@ impl Context {
 }
 
 #[no_mangle]
-static mut CONTEXT: Option<Context> = None;
+static mut CONTEXT: Option<&mut Context> = None;
+static mut OWNED_CONTEXT: Option<Context> = None;
 
 // This is required for #[macroquad::test]
 //
@@ -465,7 +466,14 @@ pub mod test {
     pub static ONCE: std::sync::Once = std::sync::Once::new();
 }
 
-fn get_context() -> &'static mut Context {
+pub fn set_context(ctx: &'static mut Context) {
+    thread_assert::same_thread();
+    unsafe {
+        CONTEXT = Some(ctx);
+    }
+}
+
+pub fn get_context() -> &'static mut Context {
     thread_assert::same_thread();
 
     unsafe { CONTEXT.as_mut().unwrap_or_else(|| panic!()) }
@@ -841,10 +849,11 @@ impl Window {
             thread_assert::set_thread_id();
             unsafe {
                 MAIN_FUTURE = Some(Box::pin(future));
-            }
-            let mut context = Context::new();
-            context.update_on = update_on.unwrap_or_default();
-            unsafe { CONTEXT = Some(context) };
+                OWNED_CONTEXT = Some(Context::new());
+                OWNED_CONTEXT.as_mut().unwrap()
+                    .update_on = update_on.unwrap_or_default();
+                CONTEXT = Some(OWNED_CONTEXT.as_mut().unwrap());
+            };
 
             Box::new(Stage {})
         });
